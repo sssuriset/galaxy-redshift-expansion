@@ -5,10 +5,16 @@ This project estimates the Hubble constant using galaxy redshift and distance da
 ## Method
 Redshift values were converted to recession velocities using v = cz. A linear regression model was fit to the velocity-distance relationship.
 
-## Outputs
-- Distance vs velocity plot with best-fit line
-- Estimated Hubble constant
-- Residual plot
+## Results
 
-## Result
+### Distance vs Velocity
+![Distance vs Velocity](redshift_distance.png)
+
+### Residuals
+![Residuals](residuals.png)
+
+## Key Result
 H0 ≈ 67 km/s/Mpc
+
+## Notes
+The relation v = cz is valid for small redshift. Scatter in the data reflects measurement uncertainty and galaxy peculiar velocities.
