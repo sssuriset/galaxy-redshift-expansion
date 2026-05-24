@@ -111,3 +111,7 @@ Additional outputs:
     outputs/jackknife_h0_influence.png
 
 These diagnostics test whether the H0 estimate is stable or strongly affected by one measurement, uncertainty assumptions, or the velocity approximation.
+
+## Fit Quality Note
+
+The reduced chi-square value is larger than 1, which indicates that the scatter in the velocity-distance relation is larger than the stated measurement uncertainty alone explains. This is expected for a small low-redshift sample because peculiar velocities, outliers, and simplified uncertainty assumptions can add scatter to the Hubble-law relation.
