@@ -1,0 +1,12 @@
+metric,value
+weighted_h0_km_s_mpc,68.39062960640507
+unweighted_h0_km_s_mpc,68.35984771425186
+weighted_h0_without_outlier_km_s_mpc,67.59545289539624
+weighted_h0_95_ci_lower,66.75858227413957
+weighted_h0_95_ci_upper,71.18788824334753
+weighted_mean_residual_km_s,1.3161376515017915
+weighted_rms_residual_km_s,359.08215456877565
+weighted_max_abs_residual_km_s,1115.3901873915102
+clean_mean_residual_km_s,-16.918376766388672
+clean_rms_residual_km_s,208.00859653430524
+removed_outlier_count,1.0

@@ -1,0 +1,4 @@
+model,h0_km_s_mpc,intercept_km_s,rms_residual_km_s
+weighted_origin_fit,68.39062960640507,0.0,359.08215456877565
+unweighted_intercept_fit,68.35984771425186,3.7273858701692006,359.0753235421069
+weighted_origin_fit_without_outlier,67.59545289539624,0.0,208.00859653430524

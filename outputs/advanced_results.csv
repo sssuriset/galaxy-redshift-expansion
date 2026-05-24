@@ -1,0 +1,9 @@
+metric,value
+weighted_h0_classical_velocity,68.39062960640507
+weighted_h0_relativistic_velocity,67.26046855143346
+difference_relativistic_minus_classical,-1.1301610549716088
+reduced_chi_square_classical_fit,12.547967164807359
+monte_carlo_h0_lower_95,63.32020678186286
+monte_carlo_h0_median,67.92124370999207
+monte_carlo_h0_upper_95,73.07033348016056
+largest_single_galaxy_h0_shift,0.7951767110088355
