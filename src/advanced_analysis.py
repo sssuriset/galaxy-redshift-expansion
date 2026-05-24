@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 C_KM_S = 299792.458
 
 
-def load_data():
+def load():
     path = "data/galaxy_redshift_data.csv"
 
     if not os.path.exists(path):
@@ -26,12 +26,12 @@ def load_data():
     return data
 
 
-def weighted_h0(distance, velocity, velocity_uncertainty):
+def fit_weighted(distance, velocity, velocity_uncertainty):
     weights = 1 / velocity_uncertainty**2
     return np.sum(weights * distance * velocity) / np.sum(weights * distance**2)
 
 
-def reduced_chi_square(distance, velocity, velocity_uncertainty, h0):
+def chi2_reduced(distance, velocity, velocity_uncertainty, h0):
     model = h0 * distance
     residuals = velocity - model
     chi_square = np.sum((residuals / velocity_uncertainty) ** 2)
@@ -40,7 +40,7 @@ def reduced_chi_square(distance, velocity, velocity_uncertainty, h0):
     return chi_square / degrees_of_freedom
 
 
-def monte_carlo_h0(data, trials=10000):
+def monte_carlo(data, trials=10000):
     np.random.seed(31)
 
     h0_values = []
@@ -58,7 +58,7 @@ def monte_carlo_h0(data, trials=10000):
 
         valid = sampled_distance > 0
 
-        h0 = weighted_h0(
+        h0 = fit_weighted(
             sampled_distance[valid],
             sampled_velocity[valid],
             velocity_uncertainty[valid]
@@ -69,12 +69,12 @@ def monte_carlo_h0(data, trials=10000):
     return np.array(h0_values)
 
 
-def jackknife_influence(data):
+def jackknife(data):
     distance = data["distance_mpc"].to_numpy()
     velocity = data["velocity_classical_km_s"].to_numpy()
     velocity_uncertainty = data["velocity_uncertainty_km_s"].to_numpy()
 
-    full_h0 = weighted_h0(distance, velocity, velocity_uncertainty)
+    full_h0 = fit_weighted(distance, velocity, velocity_uncertainty)
 
     rows = []
 
@@ -82,7 +82,7 @@ def jackknife_influence(data):
         mask = np.ones(len(data), dtype=bool)
         mask[i] = False
 
-        h0_without_one = weighted_h0(
+        h0_without_one = fit_weighted(
             distance[mask],
             velocity[mask],
             velocity_uncertainty[mask]
@@ -98,7 +98,7 @@ def jackknife_influence(data):
     return pd.DataFrame(rows).sort_values("absolute_delta_h0", ascending=False)
 
 
-def save_monte_carlo_plot(h0_values):
+def plot_monte_carlo(h0_values):
     plt.figure(figsize=(10, 5))
     plt.hist(h0_values, bins=40)
     plt.xlabel("H0 (km/s/Mpc)")
@@ -109,7 +109,7 @@ def save_monte_carlo_plot(h0_values):
     plt.close()
 
 
-def save_velocity_comparison_plot(data):
+def plot_velocity_check(data):
     plt.figure(figsize=(10, 5))
     plt.scatter(
         data["velocity_classical_km_s"],
@@ -127,9 +127,9 @@ def save_velocity_comparison_plot(data):
     plt.close()
 
 
-def save_jackknife_plot(jackknife):
+def plot_jackknife(jackknife_table):
     plt.figure(figsize=(10, 5))
-    plt.bar(jackknife["removed_galaxy_id"], jackknife["delta_h0_from_full"])
+    plt.bar(jackknife_table["removed_galaxy_id"], jackknife_table["delta_h0_from_full"])
     plt.xticks(rotation=45, ha="right")
     plt.xlabel("Removed galaxy")
     plt.ylabel("Change in H0 (km/s/Mpc)")
@@ -142,37 +142,37 @@ def save_jackknife_plot(jackknife):
 def main():
     os.makedirs("outputs", exist_ok=True)
 
-    data = load_data()
+    data = load()
 
     distance = data["distance_mpc"].to_numpy()
     velocity_classical = data["velocity_classical_km_s"].to_numpy()
     velocity_relativistic = data["velocity_relativistic_km_s"].to_numpy()
     velocity_uncertainty = data["velocity_uncertainty_km_s"].to_numpy()
 
-    h0_classical = weighted_h0(distance, velocity_classical, velocity_uncertainty)
-    h0_relativistic = weighted_h0(distance, velocity_relativistic, velocity_uncertainty)
+    h0_classical = fit_weighted(distance, velocity_classical, velocity_uncertainty)
+    h0_relativistic = fit_weighted(distance, velocity_relativistic, velocity_uncertainty)
 
-    reduced_chi2_classical = reduced_chi_square(
+    reduced_chi2_classical = chi2_reduced(
         distance,
         velocity_classical,
         velocity_uncertainty,
         h0_classical
     )
 
-    h0_mc = monte_carlo_h0(data)
+    h0_mc = monte_carlo(data)
     mc_lower, mc_median, mc_upper = np.percentile(h0_mc, [2.5, 50, 97.5])
 
-    jackknife = jackknife_influence(data)
+    jackknife_table = jackknife(data)
 
     advanced_results = pd.DataFrame({
         "metric": [
-            "weighted_h0_classical_velocity",
-            "weighted_h0_relativistic_velocity",
+            "fit_weighted_classical_velocity",
+            "fit_weighted_relativistic_velocity",
             "difference_relativistic_minus_classical",
-            "reduced_chi_square_classical_fit",
-            "monte_carlo_h0_lower_95",
-            "monte_carlo_h0_median",
-            "monte_carlo_h0_upper_95",
+            "chi2_reduced_classical_fit",
+            "monte_carlo_lower_95",
+            "monte_carlo_median",
+            "monte_carlo_upper_95",
             "largest_single_galaxy_h0_shift"
         ],
         "value": [
@@ -183,23 +183,23 @@ def main():
             mc_lower,
             mc_median,
             mc_upper,
-            jackknife.iloc[0]["absolute_delta_h0"]
+            jackknife_table.iloc[0]["absolute_delta_h0"]
         ]
     })
 
     advanced_results.to_csv("outputs/advanced_results.csv", index=False)
-    jackknife.to_csv("outputs/jackknife_influence.csv", index=False)
+    jackknife_table.to_csv("outputs/jackknife_influence.csv", index=False)
 
-    save_monte_carlo_plot(h0_mc)
-    save_velocity_comparison_plot(data)
-    save_jackknife_plot(jackknife)
+    plot_monte_carlo(h0_mc)
+    plot_velocity_check(data)
+    plot_jackknife(jackknife_table)
 
     print("Classical weighted H0:", round(h0_classical, 3), "km/s/Mpc")
     print("Relativistic weighted H0:", round(h0_relativistic, 3), "km/s/Mpc")
     print("Reduced chi-square:", round(reduced_chi2_classical, 3))
     print("Monte Carlo 95% interval:", round(mc_lower, 3), "to", round(mc_upper, 3))
-    print("Most influential galaxy:", jackknife.iloc[0]["removed_galaxy_id"])
-    print("Largest H0 shift:", round(jackknife.iloc[0]["absolute_delta_h0"], 3), "km/s/Mpc")
+    print("Most influential galaxy:", jackknife_table.iloc[0]["removed_galaxy_id"])
+    print("Largest H0 shift:", round(jackknife_table.iloc[0]["absolute_delta_h0"], 3), "km/s/Mpc")
     print("\nSaved outputs/advanced_results.csv")
     print("Saved outputs/jackknife_influence.csv")
 

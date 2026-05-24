@@ -1,117 +1,103 @@
-# Galaxy Redshift Expansion Analysis
+# Galaxy Redshift Expansion
 
-This project estimates the Hubble constant from galaxy redshift and distance data. It converts redshift to recession velocity using v = cz, fits the redshift-distance relation, compares regression choices, and evaluates uncertainty in the fitted value of H0.
+This project estimates the Hubble constant from a small redshift and distance dataset. The current pipeline uses a synthetic galaxy sample, which makes it easier to test how regression choices, noise, and outliers affect the fitted value of H0.
 
-## Project Goal
+This is not meant to be a precision cosmology measurement. It is a small numerical analysis project built around the Hubble law.
 
-The goal is to estimate H0 from galaxy distance and redshift measurements while showing how uncertainty, outliers, and residual behavior affect the result.
+## What the code does
 
-## Methods
+The main script converts redshift to recession velocity using the low redshift approximation:
 
-The analysis includes:
+    v = cz
 
-- redshift-to-velocity conversion using v = cz
-- weighted linear regression through the origin
-- unweighted linear regression with an intercept
-- bootstrap confidence interval for H0
-- residual statistics
-- outlier comparison
-- model comparison table
+It then compares two fits:
 
-## Repository Structure
+1. A weighted fit through the origin
+2. An unweighted linear fit with an intercept
 
-    galaxy-redshift-expansion/
-    ├── src/
-    │   └── main.py
-    ├── data/
-    │   └── galaxy_redshift_data.csv
-    ├── outputs/
-    │   ├── hubble_fit_comparison.png
-    │   ├── residuals.png
-    │   ├── results.csv
-    │   ├── model_comparison.csv
-    │   └── removed_outliers.csv
-    ├── docs/
-    │   └── method.md
-    └── README.md
+The script also runs a bootstrap estimate for H0, removes high residual points as a sensitivity test, and saves plots and CSV files.
 
-## Example Outputs
+The advanced analysis script adds:
 
-The main fit compares weighted and unweighted estimates of the redshift-distance relation.
+1. A classical versus relativistic velocity comparison
+2. Monte Carlo sampling with distance and redshift uncertainty
+3. Jackknife influence testing
+4. Reduced chi square for the baseline weighted fit
 
-![Hubble Fit Comparison](outputs/hubble_fit_comparison.png)
+## Dataset note
 
-The residual plot shows how individual galaxies deviate from the fitted Hubble-law relation.
+The main dataset is synthetic. If `data/galaxy_redshift_data.csv` is missing, the code creates it.
 
-![Residuals](outputs/residuals.png)
+The synthetic data include distance uncertainty, redshift uncertainty, peculiar velocity noise, and one injected outlier. That makes the project useful for testing the fitting process, but the result should not be treated as a measured value of H0.
 
-## Output Tables
+The folder `redshift_real_data_scratch/` contains early attempts at using larger real catalog files. Those files are kept for future work, but they are not part of the current finished pipeline.
 
-The script saves:
+## How to run
 
-    outputs/results.csv
-    outputs/model_comparison.csv
-    outputs/removed_outliers.csv
+Install the dependencies:
 
-These files include:
+    python3 -m pip install -r requirements.txt
 
-- weighted H0 estimate
-- unweighted H0 estimate
-- H0 estimate after outlier removal
-- 95 percent bootstrap confidence interval
-- residual statistics
-- removed outlier count
-
-## Scientific Context
-
-For small redshift values, recession velocity can be approximated as v = cz. In this regime, the slope of the velocity-distance relation estimates H0. Scatter around the fit can come from measurement uncertainty, limited sample size, and peculiar velocities. Peculiar velocities are local galaxy motions that add to or subtract from the recession velocity caused by cosmic expansion.
-
-## Skills Demonstrated
-
-- Python scientific computing
-- astronomical data analysis
-- weighted regression
-- uncertainty estimation
-- bootstrap confidence intervals
-- residual analysis
-- model comparison
-
-## Run
-
-Install dependencies:
-
-    python3 -m pip install numpy pandas matplotlib scipy
-
-Run the analysis:
+Run the main analysis:
 
     python3 src/main.py
 
-## Advanced Diagnostics
-
-An additional script, `src/advanced_analysis.py`, extends the baseline H0 fit with stability and uncertainty diagnostics.
-
-It adds:
-
-- Monte Carlo propagation of distance and redshift uncertainty
-- jackknife influence testing by removing one galaxy at a time
-- comparison between classical v = cz velocity and relativistic velocity estimates
-- reduced chi-square calculation for fit quality
-- additional diagnostic plots and CSV outputs
-
-Run:
+Run the additional diagnostics:
 
     python3 src/advanced_analysis.py
 
-Additional outputs:
+## Outputs
 
-    outputs/advanced_results.csv
-    outputs/jackknife_influence.csv
-    outputs/monte_carlo_h0_distribution.png
-    outputs/classical_vs_relativistic_velocity.png
-    outputs/jackknife_h0_influence.png
+The scripts save figures and tables in `outputs/`.
 
-These diagnostics test whether the H0 estimate is stable or strongly affected by one measurement, uncertainty assumptions, or the velocity approximation.
+Main outputs:
 
-## Fit Quality Note
+- `results.csv`
+- `model_comparison.csv`
+- `removed_outliers.csv`
+- `hubble_fit_comparison.png`
+- `residuals.png`
 
-The reduced chi-square value is larger than 1, which indicates that the scatter in the velocity-distance relation is larger than the stated measurement uncertainty alone explains. This is expected for a small low-redshift sample because peculiar velocities, outliers, and simplified uncertainty assumptions can add scatter to the Hubble-law relation.
+Advanced outputs:
+
+- `advanced_results.csv`
+- `monte_carlo_h0_distribution.png`
+- `classical_vs_relativistic_velocity.png`
+- `jackknife_h0_influence.png`
+- `jackknife_influence.csv`
+
+## Results
+
+The synthetic sample is generated with an input H0 near 67.5 km/s/Mpc. The recovered value changes depending on the fitting method and on whether the injected outlier is included.
+
+The weighted fit is the baseline result because it uses the redshift derived velocity uncertainty. Distance uncertainty is shown in the plots and used in the Monte Carlo diagnostic, but it is not included in the baseline weighted regression.
+
+The outlier removal step is only a sensitivity check. It is not a formal outlier detection method for survey data.
+
+## Method
+
+For nearby galaxies, the code estimates recession velocity with:
+
+    v = cz
+
+The fitted Hubble law model is:
+
+    v = H0 d
+
+where v is recession velocity, d is distance, and H0 is the fitted slope.
+
+The bootstrap test resamples the galaxy list and refits H0 many times. This gives a rough estimate of how much the result depends on the finite sample. The jackknife test removes one galaxy at a time to show which points have the most influence on the fitted slope.
+
+## Limitations
+
+This project uses a small synthetic dataset. It does not include survey selection effects, calibration uncertainty, correlated distance errors, redshift frame corrections, or a full cosmological distance relation.
+
+The real catalog files in the scratch folder still need cleaning before they can be used in the main pipeline.
+
+## Future work
+
+- Clean the real catalog files into a usable distance redshift table
+- Add a cited observational dataset
+- Replace the simple outlier cutoff with a more defensible robust fitting method
+- Compare low redshift and relativistic velocity models across a wider redshift range
+- Combine velocity and distance uncertainty in the main fit

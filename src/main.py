@@ -7,7 +7,7 @@ from scipy.stats import linregress
 C_KM_S = 299792.458
 
 
-def make_sample_data(path):
+def make_data(path):
     np.random.seed(12)
 
     distance_mpc = np.array([8, 12, 18, 25, 32, 40, 55, 70, 85, 100, 120, 145, 170, 200])
@@ -40,12 +40,12 @@ def make_sample_data(path):
     data.to_csv(path, index=False)
 
 
-def load_data():
+def load():
     os.makedirs("data", exist_ok=True)
     path = "data/galaxy_redshift_data.csv"
 
     if not os.path.exists(path):
-        make_sample_data(path)
+        make_data(path)
 
     data = pd.read_csv(path)
     data["velocity_km_s"] = C_KM_S * data["redshift"]
@@ -54,7 +54,7 @@ def load_data():
     return data
 
 
-def weighted_h0_fit(distance, velocity, velocity_uncertainty):
+def fit_weighted(distance, velocity, velocity_uncertainty):
     weights = 1 / velocity_uncertainty**2
     h0 = np.sum(weights * distance * velocity) / np.sum(weights * distance**2)
     intercept = 0
@@ -65,7 +65,7 @@ def weighted_h0_fit(distance, velocity, velocity_uncertainty):
     return h0, intercept, residuals
 
 
-def unweighted_fit(distance, velocity):
+def fit_linear(distance, velocity):
     result = linregress(distance, velocity)
     model = result.slope * distance + result.intercept
     residuals = velocity - model
@@ -73,7 +73,7 @@ def unweighted_fit(distance, velocity):
     return result.slope, result.intercept, residuals
 
 
-def bootstrap_h0(distance, velocity, velocity_uncertainty, samples=5000):
+def bootstrap(distance, velocity, velocity_uncertainty, samples=5000):
     np.random.seed(22)
     h0_values = []
 
@@ -81,7 +81,7 @@ def bootstrap_h0(distance, velocity, velocity_uncertainty, samples=5000):
 
     for _ in range(samples):
         index = np.random.randint(0, n, n)
-        h0, _, _ = weighted_h0_fit(
+        h0, _, _ = fit_weighted(
             distance[index],
             velocity[index],
             velocity_uncertainty[index]
@@ -92,7 +92,7 @@ def bootstrap_h0(distance, velocity, velocity_uncertainty, samples=5000):
     return lower, upper, np.array(h0_values)
 
 
-def residual_stats(residuals):
+def stats(residuals):
     return {
         "mean_residual_km_s": np.mean(residuals),
         "std_residual_km_s": np.std(residuals, ddof=1),
@@ -101,13 +101,13 @@ def residual_stats(residuals):
     }
 
 
-def remove_outliers(data, residuals, sigma_cut=2.0):
+def cut_outliers(data, residuals, sigma_cut=2.0):
     std = np.std(residuals, ddof=1)
     mask = np.abs(residuals) < sigma_cut * std
     return data[mask].copy(), data[~mask].copy()
 
 
-def save_hubble_plot(data, h0_weighted, intercept_unweighted, h0_unweighted, clean_data=None, h0_clean=None):
+def plot_fit(data, h0_weighted, intercept_unweighted, h0_unweighted, clean_data=None, h0_clean=None):
     plt.figure(figsize=(10, 6))
 
     plt.errorbar(
@@ -137,7 +137,7 @@ def save_hubble_plot(data, h0_weighted, intercept_unweighted, h0_unweighted, cle
     plt.close()
 
 
-def save_residual_plot(data, residuals, clean_residuals=None, clean_data=None):
+def plot_residuals(data, residuals, clean_residuals=None, clean_data=None):
     plt.figure(figsize=(10, 5))
 
     plt.axhline(0, linestyle="--")
@@ -158,43 +158,43 @@ def save_residual_plot(data, residuals, clean_residuals=None, clean_data=None):
 def main():
     os.makedirs("outputs", exist_ok=True)
 
-    data = load_data()
+    data = load()
 
     distance = data["distance_mpc"].to_numpy()
     velocity = data["velocity_km_s"].to_numpy()
     velocity_uncertainty = data["velocity_uncertainty_km_s"].to_numpy()
 
-    h0_weighted, intercept_weighted, residuals_weighted = weighted_h0_fit(
+    h0_weighted, intercept_weighted, residuals_weighted = fit_weighted(
         distance,
         velocity,
         velocity_uncertainty
     )
 
-    h0_unweighted, intercept_unweighted, residuals_unweighted = unweighted_fit(
+    h0_unweighted, intercept_unweighted, residuals_unweighted = fit_linear(
         distance,
         velocity
     )
 
-    clean_data, removed_data = remove_outliers(data, residuals_weighted)
+    clean_data, removed_data = cut_outliers(data, residuals_weighted)
 
     clean_distance = clean_data["distance_mpc"].to_numpy()
     clean_velocity = clean_data["velocity_km_s"].to_numpy()
     clean_velocity_uncertainty = clean_data["velocity_uncertainty_km_s"].to_numpy()
 
-    h0_clean, _, residuals_clean = weighted_h0_fit(
+    h0_clean, _, residuals_clean = fit_weighted(
         clean_distance,
         clean_velocity,
         clean_velocity_uncertainty
     )
 
-    ci_lower, ci_upper, _ = bootstrap_h0(
+    ci_lower, ci_upper, _ = bootstrap(
         distance,
         velocity,
         velocity_uncertainty
     )
 
-    stats_weighted = residual_stats(residuals_weighted)
-    stats_clean = residual_stats(residuals_clean)
+    stats_weighted = stats(residuals_weighted)
+    stats_clean = stats(residuals_clean)
 
     results = pd.DataFrame({
         "metric": [
@@ -245,7 +245,7 @@ def main():
         ],
         "rms_residual_km_s": [
             stats_weighted["rms_residual_km_s"],
-            residual_stats(residuals_unweighted)["rms_residual_km_s"],
+            stats(residuals_unweighted)["rms_residual_km_s"],
             stats_clean["rms_residual_km_s"]
         ]
     })
@@ -253,7 +253,7 @@ def main():
     model_comparison.to_csv("outputs/model_comparison.csv", index=False)
     removed_data.to_csv("outputs/removed_outliers.csv", index=False)
 
-    save_hubble_plot(
+    plot_fit(
         data,
         h0_weighted,
         intercept_unweighted,
@@ -262,7 +262,7 @@ def main():
         h0_clean
     )
 
-    save_residual_plot(
+    plot_residuals(
         data,
         residuals_weighted,
         residuals_clean,
