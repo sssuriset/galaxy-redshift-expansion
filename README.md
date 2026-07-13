@@ -1,103 +1,25 @@
 # Galaxy Redshift Expansion
 
-This project estimates the Hubble constant from a small redshift and distance dataset. The current pipeline uses a synthetic galaxy sample, which makes it easier to test how regression choices, noise, and outliers affect the fitted value of H0.
+A Hubble constant estimation study on a controlled synthetic galaxy sample. Because the data generator plants the truth (H0 = 67.5 km/s/Mpc, with distance and redshift uncertainty, peculiar velocity scatter, and one injected outlier), every fitting choice can be judged against a known answer instead of against hope.
 
-This is not meant to be a precision cosmology measurement. It is a small numerical analysis project built around the Hubble law.
+The headline comparison: a weighted fit through the origin on the full sample returns 68.39, removing the planted outlier with a 2-sigma residual cut moves it to 67.60, and the injected truth is 67.5. One bad galaxy at 95 Mpc shifts the answer by 0.8 km/s/Mpc, which is the point of the exercise.
 
-## What the code does
+## Run
 
-The main script converts redshift to recession velocity using the low redshift approximation:
+```bash
+python3 -m pip install numpy pandas matplotlib scipy
+python3 src/main.py                 # fits, bootstrap, outlier cut
+python3 src/advanced_analysis.py    # relativistic comparison, Monte Carlo, jackknife
+```
 
-    v = cz
+`data/galaxy_redshift_data.csv` ships with the repo; if deleted, `src/main.py` regenerates it from a fixed seed, so runs reproduce exactly. Figures and CSV tables land in `outputs/`.
 
-It then compares two fits:
+## What gets measured
 
-1. A weighted fit through the origin
-2. An unweighted linear fit with an intercept
+`main.py` converts redshift to velocity with v = cz, fits H0 three ways (weighted through the origin, unweighted with a free intercept, and weighted after the residual cut), bootstraps a 95 percent confidence interval (66.76 to 71.19), and records residual statistics before and after the cut (RMS drops from 359 to 208 km/s when the outlier goes).
 
-The script also runs a bootstrap estimate for H0, removes high residual points as a sensitivity test, and saves plots and CSV files.
+`advanced_analysis.py` swaps in the relativistic velocity conversion, which lowers the fit by 1.13 km/s/Mpc even at these low redshifts, runs a Monte Carlo over both measurement uncertainties (95 percent interval 63.3 to 73.1), computes jackknife influence per galaxy, and reports the reduced chi-square of the baseline fit (12.5, honestly poor, driven by peculiar velocities the error model ignores).
 
-The advanced analysis script adds:
+## Reading the numbers
 
-1. A classical versus relativistic velocity comparison
-2. Monte Carlo sampling with distance and redshift uncertainty
-3. Jackknife influence testing
-4. Reduced chi square for the baseline weighted fit
-
-## Dataset note
-
-The main dataset is synthetic. If `data/galaxy_redshift_data.csv` is missing, the code creates it.
-
-The synthetic data include distance uncertainty, redshift uncertainty, peculiar velocity noise, and one injected outlier. That makes the project useful for testing the fitting process, but the result should not be treated as a measured value of H0.
-
-The folder `redshift_real_data_scratch/` contains early attempts at using larger real catalog files. Those files are kept for future work, but they are not part of the current finished pipeline.
-
-## How to run
-
-Install the dependencies:
-
-    python3 -m pip install -r requirements.txt
-
-Run the main analysis:
-
-    python3 src/main.py
-
-Run the additional diagnostics:
-
-    python3 src/advanced_analysis.py
-
-## Outputs
-
-The scripts save figures and tables in `outputs/`.
-
-Main outputs:
-
-- `results.csv`
-- `model_comparison.csv`
-- `removed_outliers.csv`
-- `hubble_fit_comparison.png`
-- `residuals.png`
-
-Advanced outputs:
-
-- `advanced_results.csv`
-- `monte_carlo_h0_distribution.png`
-- `classical_vs_relativistic_velocity.png`
-- `jackknife_h0_influence.png`
-- `jackknife_influence.csv`
-
-## Results
-
-The synthetic sample is generated with an input H0 near 67.5 km/s/Mpc. The recovered value changes depending on the fitting method and on whether the injected outlier is included.
-
-The weighted fit is the baseline result because it uses the redshift derived velocity uncertainty. Distance uncertainty is shown in the plots and used in the Monte Carlo diagnostic, but it is not included in the baseline weighted regression.
-
-The outlier removal step is only a sensitivity check. It is not a formal outlier detection method for survey data.
-
-## Method
-
-For nearby galaxies, the code estimates recession velocity with:
-
-    v = cz
-
-The fitted Hubble law model is:
-
-    v = H0 d
-
-where v is recession velocity, d is distance, and H0 is the fitted slope.
-
-The bootstrap test resamples the galaxy list and refits H0 many times. This gives a rough estimate of how much the result depends on the finite sample. The jackknife test removes one galaxy at a time to show which points have the most influence on the fitted slope.
-
-## Limitations
-
-This project uses a small synthetic dataset. It does not include survey selection effects, calibration uncertainty, correlated distance errors, redshift frame corrections, or a full cosmological distance relation.
-
-The real catalog files in the scratch folder still need cleaning before they can be used in the main pipeline.
-
-## Future work
-
-- Clean the real catalog files into a usable distance redshift table
-- Add a cited observational dataset
-- Replace the simple outlier cutoff with a more defensible robust fitting method
-- Compare low redshift and relativistic velocity models across a wider redshift range
-- Combine velocity and distance uncertainty in the main fit
+The free intercept lands at 3.7 km/s against a scatter of hundreds, so the data do not demand an offset, consistent with the Hubble law passing through the origin. The reduced chi-square far above 1 shows the distance errors alone cannot explain the scatter; peculiar velocity acts as an unmodeled error term, which is exactly what it does in real low-redshift samples. Since the sample is synthetic and small, the value of this project is the sensitivity analysis, not the H0 value itself.
